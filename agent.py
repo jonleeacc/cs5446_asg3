@@ -8,6 +8,7 @@ from PIL import Image
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import random
 
 ## DO NOT CHANGE THIS CODE
 def convert_state_to_list(state, env_features):
@@ -52,6 +53,7 @@ def train_model():
     criterion = nn.MSELoss()
 
     discount_factor = 0.9
+    epsilon = 0.9
 
     # Training loop
     num_epochs = 50  # Total number of epochs to train
@@ -66,7 +68,11 @@ def train_model():
             # Predict action values from the model
             model.train()
             action_values = model(state_tensor)
-            action = torch.argmax(action_values).item()  # Select action with the highest value
+            # ε-greedy action selection
+            if random.random() < epsilon:
+                action = env.action_space.sample()  # Random action
+            else:
+                action = torch.argmax(action_values).item()  # Select action with the highest value
             
             # Take action in the environment
             next_state, reward, terminated, info = env.step(action)
@@ -91,6 +97,7 @@ def train_model():
                 break
             state = next_state
 
+        epsilon = max(0.01, epsilon * 0.99)
         if epoch % 10 == 0:
             print(f'Epoch {epoch}, Average Loss: {total_loss / env.horizon}')
 
