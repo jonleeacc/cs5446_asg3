@@ -23,9 +23,11 @@ class YourModel(nn.Module):
         super(YourModel, self).__init__()
         # Your model layers and initializations here
         # Model layers
-        self.fc1 = nn.Linear(input_size, 20)  # First layer, input size: state configuration. output 20
-        self.fc2 = nn.Linear(20, 20)  # Second layer, input 20, output 20
-        self.fc3 = nn.Linear(20, 6)   # Third layer, input 20, output 6
+        self.fc1 = nn.Linear(input_size, 6)  # First layer, input size: state configuration. output 20
+        # self.fc2 = nn.Linear(20, 20)  # Second layer, input 20, output 20
+        # self.fc3 = nn.Linear(20, 20)  # Second layer, input 20, output 20
+        # self.fc4 = nn.Linear(20, 20)  # Second layer, input 20, output 20
+        self.fc5 = nn.Linear(6, 6)   # Third layer, input 20, output 6
  
     def forward(self, x):
         # x will be a tensor with shape [batch_size, 11]
@@ -33,8 +35,10 @@ class YourModel(nn.Module):
         # Ensure the output has shape [batch_size, 6]
 
         x = F.relu(self.fc1(x))  # Apply ReLU to the output of the first layer
-        x = F.relu(self.fc2(x))  # Apply ReLU to the output of the second layer
-        x = self.fc3(x)     # Output layer, no activation function here
+        # x = F.relu(self.fc2(x))  # Apply ReLU to the output of the second layer
+        # x = F.relu(self.fc3(x))  # Apply ReLU to the output of the third layer
+        # x = F.relu(self.fc4(x))  # Apply ReLU to the output of the fourth layer
+        x = self.fc5(x)     # Output layer, no activation function here
         output = torch.sigmoid(x)  # Apply sigmoid to the output of the third layer
 
         return output
@@ -44,6 +48,7 @@ def train_model():
     # Create an environment instance
     env = Elevator(is_render=False)  # Disable rendering for training
     state = env.reset()
+    print(f'env reset {env.disc2state(state)}')
     env_features = list(env.observation_space.keys())
 
     # Model and training setup
@@ -61,7 +66,9 @@ def train_model():
         total_loss = 0
         print(f'Epoch {epoch}')
         for _ in range(env.horizon):
+            #print(f'horizon {env.horizon}')
             state_desc = env.disc2state(state)
+            print(f'state {state_desc, env_features}')
             state_list = convert_state_to_list(state_desc, env_features)
             state_tensor = torch.FloatTensor([state_list])  # Convert state list to tensor and add batch dimension
             
@@ -71,10 +78,14 @@ def train_model():
             # ε-greedy action selection
             if random.random() < epsilon:
                 action = env.action_space.sample()  # Random action
+                print(action)
+                print(env.action_space)
             else:
                 action = torch.argmax(action_values).item()  # Select action with the highest value
+                print(action)
             
             # Take action in the environment
+            print(f'env.step{env.step(action)}')
             next_state, reward, terminated, info = env.step(action)
             next_state_desc = env.disc2state(next_state)
             next_state_list = convert_state_to_list(next_state_desc, env_features)
@@ -203,4 +214,4 @@ def main():
 
 if __name__ == "__main__":
     train_model()
-    main()
+    #main()
