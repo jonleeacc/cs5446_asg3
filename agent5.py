@@ -42,11 +42,11 @@ class DQN(nn.Module):
         # self.layer1 = nn.Linear(n_observations, 128)
         # self.layer2 = nn.Linear(128, 128)
         # self.layer3 = nn.Linear(128, n_actions)
-        self.layer1 = nn.Linear(n_observations, 30)
-        self.layer2 = nn.Linear(30, 30)
-        self.layer3 = nn.Linear(30, 30)
-        self.layer4 = nn.Linear(30, 30)
-        self.layer5 = nn.Linear(30, n_actions)
+        self.layer1 = nn.Linear(n_observations, 128)
+        self.layer2 = nn.Linear(128, 128)
+        self.layer3 = nn.Linear(128, 128)
+        # self.layer4 = nn.Linear(30, 30)
+        self.layer5 = nn.Linear(128, n_actions)
 
 
     # Called with either one element to determine next action, or a batch
@@ -55,7 +55,7 @@ class DQN(nn.Module):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
         x = F.relu(self.layer3(x))
-        x = F.relu(self.layer4(x))
+        # x = F.relu(self.layer4(x))
         output = self.layer5(x)
         return output
 
@@ -124,7 +124,7 @@ memory = ReplayMemory(10000)
 steps_done = 0
 
 
-def select_action(state):
+def select_action(state_tensor):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
@@ -135,7 +135,7 @@ def select_action(state):
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1).indices.view(1, 1)
+            return policy_net(state_tensor).max(1).indices.view(1, 1)
     else:
         return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
 
@@ -187,11 +187,12 @@ def optimize_model():
     optimizer.step()
 
 
-num_episodes = 50
+num_episodes = 500
 
 
 for i_episode in range(num_episodes):
-    print(i_episode)
+    if i_episode%50==0:
+        print(i_episode)
     # Initialize the environment and get its state
     TEST_FLOAT = True
     if TEST_FLOAT:
@@ -203,6 +204,7 @@ for i_episode in range(num_episodes):
         for t in range(env.horizon):
             #action = select_action(state) #state_tensor
             action = select_action(state_tensor) 
+            #print(f'action {action}')
             observation, reward, terminated, truncated = env.step(action.item())
             reward = torch.tensor([reward], device=device)
             done = terminated or truncated
