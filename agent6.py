@@ -89,7 +89,7 @@ env = Elevator()
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
@@ -194,85 +194,40 @@ num_episodes = 50
 for i_episode in range(num_episodes):
     if i_episode%10==0:
         print(i_episode)
-    # Initialize the environment and get its state
-    TEST_FLOAT = True
-    if TEST_FLOAT:
-        state = env.reset()
-        #state = parse_state(state)
-        state_list = parse_state(state)
-        #state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-        state_tensor = torch.FloatTensor([state_list])
-        for t in range(env.horizon):
-            #action = select_action(state) #state_tensor
-            action = select_action(state_tensor) 
-            #print(f'action {action}')
-            observation, reward, terminated, truncated = env.step(action.item())
-            reward = torch.tensor([reward], device=device)
-            done = terminated or truncated
 
-            if terminated:
-                next_state = None
-            else:
-                #next_state = torch.tensor(parse_state(observation), dtype=torch.float32, device=device).unsqueeze(0)
-                next_state = torch.FloatTensor([parse_state(observation)])
-            # Store the transition in memory
-            #memory.push(state, action, next_state, reward) #state_tensor
-            memory.push(state_tensor, action, next_state, reward) #state_tensor
+    state = env.reset()
+    state_list = parse_state(state)
+    state_tensor = torch.tensor(state_list, dtype=torch.float32, device=device).unsqueeze(0)
+    for t in range(env.horizon):
+        action = select_action(state_tensor) 
+        observation, reward, terminated, truncated = env.step(action.item())
+        reward = torch.tensor([reward], device=device)
+        done = terminated or truncated
 
-            # Move to the next state
-            state = next_state
+        if terminated:
+            next_state = None
+        else:
+            next_state = torch.tensor(parse_state(observation), dtype=torch.float32, device=device).unsqueeze(0)
 
-            # Perform one step of the optimization (on the policy network)
-            optimize_model()
+        memory.push(state_tensor, action, next_state, reward) #state_tensor
 
-            # Soft update of the target network's weights
-            # θ′ ← τ θ + (1 −τ )θ′
-            target_net_state_dict = target_net.state_dict()
-            policy_net_state_dict = policy_net.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
-            target_net.load_state_dict(target_net_state_dict)
+        # Move to the next state
+        state = next_state
 
-            if done:
-                break
-    else:
-        state = env.reset()
-        state = parse_state(state)
-        # state_list = parse_state(state)
-        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-        # state_tensor = torch.FloatTensor([state_list])
-        for t in range(env.horizon):
-            action = select_action(state) #state_tensor
-            # action = select_action(state_tensor) 
-            observation, reward, terminated, truncated = env.step(action.item())
-            reward = torch.tensor([reward], device=device)
-            done = terminated or truncated
+        # Perform one step of the optimization (on the policy network)
+        optimize_model()
 
-            if terminated:
-                next_state = None
-            else:
-                next_state = torch.tensor(parse_state(observation), dtype=torch.float32, device=device).unsqueeze(0)
-                # next_state = torch.FloatTensor([parse_state(observation)])
-            # Store the transition in memory
-            memory.push(state, action, next_state, reward) #state_tensor
-            # memory.push(state_tensor, action, next_state, reward) #state_tensor
+        # Soft update of the target network's weights
+        # θ′ ← τ θ + (1 −τ )θ′
+        target_net_state_dict = target_net.state_dict()
+        policy_net_state_dict = policy_net.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
+        target_net.load_state_dict(target_net_state_dict)
 
-            # Move to the next state
-            state = next_state
+        if done:
+            break
 
-            # Perform one step of the optimization (on the policy network)
-            optimize_model()
-
-            # Soft update of the target network's weights
-            # θ′ ← τ θ + (1 −τ )θ′
-            target_net_state_dict = target_net.state_dict()
-            policy_net_state_dict = policy_net.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
-            target_net.load_state_dict(target_net_state_dict)
-
-            if done:
-                break
 
 torch.save(policy_net_state_dict, 'model.pt')
 
